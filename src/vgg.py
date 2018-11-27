@@ -3,9 +3,9 @@ import os
 import scipy.io
 import tensorflow as tf
 
-PATH = 'E:\\Columbia_University\\5242_Advanced_Machine_Learning\\Final_Project\\Style_Transfer'
+PATH = '../'
 
-vgg_mat_path = PATH + '\\data\\imagenet-vgg-verydeep-19.mat'
+vgg_mat_path = PATH + 'data/imagenet-vgg-verydeep-19.mat'
 
 
 class VGG(object):

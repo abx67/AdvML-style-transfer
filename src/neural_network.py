@@ -3,7 +3,7 @@ import tensorflow as tf
 import os
 from functools import reduce
 
-PATH = 'E:\\Columbia_University\\5242_Advanced_Machine_Learning\\Final_Project\\Style_Transfer'
+PATH = '../'
 
 CONTENT_LAYER_WEIGHTS = {
     'relu4_2': 1.0,
@@ -102,7 +102,7 @@ class NeuralNetwork(object):
             train_step = tf.train.AdamOptimizer(learning_rate, beta1, beta2, epsilon).minimize(loss_total)
 
             with tf.Session() as sess:
-                summary_writer = tf.summary.FileWriter(PATH + '\\logs', sess.graph)
+                summary_writer = tf.summary.FileWriter(PATH + 'logs', sess.graph)
                 sess.run(tf.global_variables_initializer())
 
                 for i in range(max_iteration):
