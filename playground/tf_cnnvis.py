@@ -13,8 +13,8 @@ from tensorflow.python.ops import gen_nn_ops
 
 from skimage.restoration import denoise_tv_bregman
 
-from .utils import *
-from .utils import config
+from utils import *
+from utils import config
 
 
 is_Registered = False # prevent duplicate gradient registration
