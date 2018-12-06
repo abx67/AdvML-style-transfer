@@ -26,7 +26,8 @@ class NeuralNetwork(object):
     '''
 
     def __init__(self, content, style, vgg, content_weight, style_weight, variation_weight,
-                 content_layer_weights, style_layer_weights, model_dir, style_demean=False):
+                 content_layer_weights, style_layer_weights, model_dir, style_demean=False,
+                 variation_loss_kernel_h=255 * 1e5):
         '''
         initialization for the NeuralNetwork object
         :param content: 3-D numpy array, content image, [height, width, 3(channel)]
@@ -39,6 +40,7 @@ class NeuralNetwork(object):
         :param style_layer_weights: dict, weight of loss at each layer in vgg network related to style image and mixed image
         :param model_dir: str, directory where the trained transformation model is saved
         :param style_demean: bool, whether to centralize for style feature, default=False
+        :param variation_loss_kernel_h: float, Gaussian kernel parameter, the higher this value, the more smooth
         '''
 
         # save content image and style image, expand the dimension to 4-D, [1, height, width, 3(channel)]
@@ -73,6 +75,9 @@ class NeuralNetwork(object):
         # save the iteration numbers for the
         # save directory where the trained transformation model is saved
         self.model_dir = model_dir
+
+        # save the parameter for kernel function of the variation loss
+        self.variation_loss_kernel_h = variation_loss_kernel_h
         return
 
     def get_content_features(self):
@@ -402,7 +407,7 @@ class NeuralNetwork(object):
                     summary_writer.add_summary(summary, i)
 
                     # output the loss
-                    cur_loss_content = loss_content.eval(feed_dict={input_image: self.content})
+                    cur_loss_content = loss_content.eval(feed_dict={input_image: self.content}) * self.content_weight
                     if i < content_reproduce_iteration:
                         cur_loss_style = 0.
                         cur_loss_variation = 0.
@@ -411,8 +416,9 @@ class NeuralNetwork(object):
                                                                     style_loss_weight: 0.,
                                                                     variation_loss_weight: 0., })
                     else:
-                        cur_loss_style = loss_style.eval(feed_dict={input_image: self.content})
-                        cur_loss_variation = loss_variation.eval(feed_dict={input_image: self.content})
+                        cur_loss_style = loss_style.eval(feed_dict={input_image: self.content}) * self.style_weight
+                        cur_loss_variation = loss_variation.eval(
+                            feed_dict={input_image: self.content}) * self.variation_weight
                         cur_loss_total = loss_total.eval(feed_dict={input_image: self.content,
                                                                     content_loss_weight: self.content_weight,
                                                                     style_loss_weight: self.style_weight,
@@ -498,9 +504,22 @@ class NeuralNetwork(object):
         :param mixed_image: 4-D tensor, [1, height, width, 3(channel)]
         :return: 1-D tensor, float
         '''
+        # compute the size of difference point along the height dimension and width dimension
         height_size = np.prod([dim.value for dim in mixed_image[:, 1:, :, :].get_shape()])
         width_size = np.prod([dim.value for dim in mixed_image[:, :, 1:, :].get_shape()])
-        loss = 2 * (tf.nn.l2_loss(
-            mixed_image[:, 1:, :, :] - mixed_image[:, :mixed_image.shape[1] - 1, :, :]) / height_size + tf.nn.l2_loss(
-            mixed_image[:, :, 1:, :] - mixed_image[:, :, :mixed_image.shape[2] - 1, :]) / width_size)
+
+        # compute the difference along the height dimension and width dimension
+        height_diff_squared = tf.square(mixed_image[:, 1:, :, :] - mixed_image[:, :mixed_image.shape[1] - 1, :, :])
+        width_diff_squared = tf.square(mixed_image[:, :, 1:, :] - mixed_image[:, :, :mixed_image.shape[2] - 1, :])
+
+        # compute the kernel for the difference
+        height_kernel = tf.math.exp(-height_diff_squared / self.variation_loss_kernel_h)
+        width_kernel = tf.math.exp(-width_diff_squared / self.variation_loss_kernel_h)
+
+        # compute the loss along the height dimension and width dimension
+        height_loss = tf.reduce_sum(tf.multiply(height_diff_squared, height_kernel)) / height_size
+        width_loss = tf.reduce_sum(tf.multiply(width_diff_squared, width_kernel)) / width_size
+
+        # compute the variation loss
+        loss = height_loss + width_loss
         return loss

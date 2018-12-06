@@ -20,7 +20,7 @@ MIXED_IMAGE_NAME = r'/mixed_image'
 
 CONTENT_WEIGHT = 1e-2
 STYLE_WEIGHT = 1.0
-VARIATION_WEIGHT = 0
+VARIATION_WEIGHT = 1e2
 LEARNING_RATE = 10
 BETA1 = 0.9
 BETA2 = 0.999
@@ -30,6 +30,7 @@ CONTENT_REPRODUCE_ITERATION = 3000
 POOLING = 'max'
 CHECK_POINT = 100
 STYLE_DEMEAN = False
+VARIATION_LOSS_KERNEL_H = 100.0  # pixel value squared scale
 SHAPE = (512, 512)
 
 CONTENT_LAYER_WEIGHTS = {
@@ -135,7 +136,8 @@ def style_transfer(content_image_path, style_image_path, mixed_image_path,
     print('Successfully loaded the VGG-19 model.')
     nn = NeuralNetwork(content_image, style_image, vgg, content_weight, style_weight, variation_weight,
                        content_layer_weights=CONTENT_LAYER_WEIGHTS, style_layer_weights=STYLE_LAYER_WEIGHTS,
-                       model_dir=MODEL_DIR + '/' + MODEL_STORE_NAME, style_demean=style_demean)
+                       model_dir=MODEL_DIR + '/' + MODEL_STORE_NAME, style_demean=style_demean,
+                       variation_loss_kernel_h=VARIATION_LOSS_KERNEL_H)
     print('Successfully constructed the style transfer optimization model.')
 
     # train the model
